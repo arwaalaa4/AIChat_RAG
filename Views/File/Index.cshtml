@@ -1,0 +1,131 @@
+﻿@using AIChat.ViewModels.File
+@model FileListViewModel
+@{
+    ViewData["Title"] = "Manage Files";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-folder2-open text-primary"></i> Your Files</h2>
+        <p class="text-muted mb-0">
+            @Model.TotalFiles file(s) &bull; @Model.TotalChunks total chunks indexed
+        </p>
+    </div>
+    <a asp-action="Upload" class="btn btn-primary">
+        <i class="bi bi-upload"></i> Upload New File
+    </a>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.SuccessMessage))
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @Model.SuccessMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @Model.ErrorMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (!Model.Files.Any())
+{
+    <div class="card bg-dark border-secondary">
+        <div class="card-body text-center py-5">
+            <i class="bi bi-folder-x display-4 text-muted"></i>
+            <h5 class="text-muted mt-3">No files uploaded yet</h5>
+            <a asp-action="Upload" class="btn btn-primary mt-2">
+                <i class="bi bi-upload"></i> Upload Your First File
+            </a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-dark table-hover align-middle">
+            <thead class="table-secondary">
+                <tr>
+                    <th><i class="bi bi-file-earmark"></i> File Name</th>
+                    <th>Type</th>
+                    <th>Strategy</th>
+                    <th>Chunks</th>
+                    <th>Size</th>
+                    <th>Status</th>
+                    <th>Indexed At</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var file in Model.Files)
+                {
+                    <tr>
+                        <td class="fw-semibold">
+                            <i class="bi @(file.FileType == ".pdf" ? "bi-file-earmark-pdf text-danger" :
+                                          file.FileType == ".docx" ? "bi-file-earmark-word text-primary" :
+                                          "bi-file-earmark-text text-success")"></i>
+                            @file.FileName
+                        </td>
+                        <td><span class="badge bg-secondary">@file.FileType.TrimStart('.')</span></td>
+                        <td>
+                            <span class="badge @(file.ChunkingStrategy == "FixedSize" ? "bg-info" : "bg-warning text-dark")">
+                                @file.ChunkingStrategy
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-primary">@file.ChunkCount</span>
+                            <small class="text-muted ms-1">chunks</small>
+                        </td>
+                        <td class="text-muted small">
+                            @((file.FileSizeBytes / 1024.0).ToString("F1")) KB
+                        </td>
+                        <td>
+                            @{
+                                var (badgeColor, icon, label) = file.Status switch
+                                {
+                                    FileIndexingStatus.Indexed => ("success", "bi-check-circle-fill", "Indexed"),
+                                    FileIndexingStatus.Processing => ("warning", "bi-arrow-repeat", "Processing"),
+                                    FileIndexingStatus.ReIndexing => ("info", "bi-arrow-repeat", "Re-Indexing"),
+                                    FileIndexingStatus.Failed => ("danger", "bi-x-circle-fill", "Failed"),
+                                    _ => ("secondary", "bi-clock", "Pending")
+                                };
+                            }
+                            <span class="badge bg-@badgeColor">
+                                <i class="bi @icon"></i> @label
+                            </span>
+                        </td>
+                        <td class="text-muted small">
+                            @(file.IndexedAt.HasValue
+                                ? file.IndexedAt.Value.ToLocalTime().ToString("MMM dd, HH:mm")
+                                : "—")
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a asp-action="Details" asp-route-id="@file.Id"
+                                   class="btn btn-outline-secondary" title="View Details">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a asp-action="ReIndex" asp-route-id="@file.Id"
+                                   class="btn btn-outline-warning" title="Re-Index">
+                                    <i class="bi bi-arrow-repeat"></i>
+                                </a>
+                                <form asp-action="Delete" asp-route-id="@file.Id"
+                                      method="post" style="display:inline"
+                                      onsubmit="return confirm('Delete \'@file.FileName\' and all its chunks?')">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-outline-danger" title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

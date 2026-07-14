@@ -1,0 +1,219 @@
+/* ═══════════════════════════════════════════════════
+   Chat With Your Files — Site Stylesheet
+   Dark theme, production-ready
+   ═══════════════════════════════════════════════════ */
+:root {
+    --bg-dark: #0d1117;
+    --bg-card: #161b22;
+    --border: #30363d;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+}
+
+/* ── Base ─────────────────────────────────────── */
+html, body {
+    height: 100%;
+    background-color: var(--bg-dark);
+    color: #e6edf3;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+/* ── Scrollbar ────────────────────────────────── */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-dark);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+}
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: #484f58;
+    }
+
+/* ── Cards ────────────────────────────────────── */
+.card {
+    background-color: var(--bg-card);
+    border-color: var(--border) !important;
+}
+
+/* ── Upload zone ──────────────────────────────── */
+.upload-zone {
+    transition: all .2s;
+    min-height: 150px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+    .upload-zone:hover {
+        border-color: var(--accent) !important;
+        background: rgba(88, 166, 255, .05);
+    }
+
+/* ── Strategy buttons ─────────────────────────── */
+.strategy-btn {
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: .75rem;
+    transition: all .2s;
+}
+
+/* ── Message bubbles ──────────────────────────── */
+.message-content {
+    line-height: 1.6;
+    word-break: break-word;
+}
+
+    .message-content p:last-child {
+        margin-bottom: 0;
+    }
+
+    .message-content pre {
+        background: #0d1117;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 1rem;
+        overflow-x: auto;
+        font-size: .85rem;
+    }
+
+    .message-content code {
+        background: rgba(110, 118, 129, .2);
+        padding: 0.1em 0.4em;
+        border-radius: 4px;
+        font-size: .875em;
+    }
+
+    .message-content pre code {
+        background: transparent;
+        padding: 0;
+    }
+
+.user-message .message-bubble {
+    border-color: rgba(139, 148, 158, 0.3) !important;
+}
+
+/* ── Typing dots ──────────────────────────────── */
+.typing-dots {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    padding: 4px 0;
+}
+
+    .typing-dots span {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--accent);
+        animation: typing 1.2s infinite ease-in-out;
+    }
+
+        .typing-dots span:nth-child(2) {
+            animation-delay: .2s;
+        }
+
+        .typing-dots span:nth-child(3) {
+            animation-delay: .4s;
+        }
+
+@keyframes typing {
+    0%, 60%, 100% {
+        transform: translateY(0);
+        opacity: .4;
+    }
+
+    30% {
+        transform: translateY(-6px);
+        opacity: 1;
+    }
+}
+
+/* ── Avatar ───────────────────────────────────── */
+.avatar {
+    min-width: 36px;
+}
+
+/* ── File items sidebar ───────────────────────── */
+.file-item {
+    transition: background .15s;
+    border-radius: 6px;
+}
+
+    .file-item:hover {
+        background: rgba(88, 166, 255, .07);
+    }
+
+    .file-item.border-primary {
+        background: rgba(88, 166, 255, .1);
+    }
+
+/* ── Tables ───────────────────────────────────── */
+.table-dark {
+    --bs-table-bg: var(--bg-card);
+}
+
+/* ── Badges ───────────────────────────────────── */
+.badge-sm {
+    font-size: .65rem;
+    padding: .2em .45em;
+}
+
+/* ── Navbar ───────────────────────────────────── */
+.navbar {
+    box-shadow: 0 1px 3px rgba(0,0,0,.3);
+}
+
+/* ── Form controls ────────────────────────────── */
+.form-control.bg-dark,
+.form-control:focus {
+    background-color: #0d1117 !important;
+    border-color: var(--border);
+    color: #e6edf3;
+}
+
+.form-control:focus {
+    box-shadow: 0 0 0 .2rem rgba(88,166,255,.15);
+}
+
+/* ── Progress bar ─────────────────────────────── */
+.progress {
+    background-color: #21262d;
+}
+
+/* ── Alert overrides ──────────────────────────── */
+.alert-dismissible .btn-close {
+    filter: invert(1);
+}
+
+/* ── Chat layout ──────────────────────────────── */
+#chatMessages {
+    scrollbar-width: thin;
+    padding-right: 4px;
+}
+
+/* ── Utility ──────────────────────────────────── */
+.font-monospace {
+    font-family: 'Cascadia Code', 'Consolas', monospace;
+}
+
+/* ── Responsive ───────────────────────────────── */
+@media (max-width: 768px) {
+    .display-1 {
+        font-size: 3rem;
+    }
+
+    #chatMessages {
+        max-height: 50vh;
+    }
+}

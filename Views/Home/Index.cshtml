@@ -1,0 +1,96 @@
+﻿@{
+    ViewData["Title"] = "Home";
+}
+
+<div class="text-center py-5">
+    <div class="mb-4">
+        <i class="bi bi-brain display-1 text-primary"></i>
+    </div>
+    <h1 class="display-5 fw-bold mb-3">Chat With Your Files</h1>
+    <p class="lead text-muted col-md-8 mx-auto mb-5">
+        Upload your documents (PDF, TXT, DOCX), let AI index them using advanced
+        chunking strategies and OpenAI embeddings, then chat with your content
+        using a fully grounded RAG pipeline.
+    </p>
+
+    <div class="row g-4 justify-content-center mb-5">
+        <div class="col-md-4">
+            <div class="card h-100 border-primary border-opacity-25 bg-dark">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-upload display-5 text-primary mb-3"></i>
+                    <h5 class="card-title">1. Upload Files</h5>
+                    <p class="card-text text-muted">
+                        Upload PDF, TXT, or DOCX files. Choose a chunking
+                        strategy and configure chunk size.
+                    </p>
+                    <a asp-controller="File" asp-action="Upload" class="btn btn-primary">
+                        <i class="bi bi-upload"></i> Upload Now
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 border-success border-opacity-25 bg-dark">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-database-gear display-5 text-success mb-3"></i>
+                    <h5 class="card-title">2. Auto-Indexed</h5>
+                    <p class="card-text text-muted">
+                        Text is extracted, chunked, embedded via OpenAI,
+                        and stored as vectors in MongoDB automatically.
+                    </p>
+                    <a asp-controller="File" asp-action="Index" class="btn btn-success">
+                        <i class="bi bi-folder2-open"></i> View Files
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 border-info border-opacity-25 bg-dark">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-chat-dots display-5 text-info mb-3"></i>
+                    <h5 class="card-title">3. Chat & Ask</h5>
+                    <p class="card-text text-muted">
+                        Ask any question. The RAG pipeline retrieves
+                        relevant context and generates grounded answers.
+                    </p>
+                    <a asp-controller="Chat" asp-action="Index" class="btn btn-info">
+                        <i class="bi bi-chat-dots"></i> Start Chatting
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- How It Works -->
+    <div class="card bg-dark border-secondary mt-4">
+        <div class="card-body p-4">
+            <h4 class="mb-4 text-muted">
+                <i class="bi bi-diagram-3"></i> How the RAG Pipeline Works
+            </h4>
+            <div class="d-flex flex-wrap justify-content-center gap-2 align-items-center">
+                @foreach (var step in new[] {
+                    ("bi-file-earmark-text", "primary", "Extract Text"),
+                    ("bi-scissors", "warning", "Chunk"),
+                    ("bi-cpu", "success", "Embed (OpenAI)"),
+                    ("bi-database", "info", "Store in MongoDB"),
+                    ("bi-search", "danger", "Semantic Search"),
+                    ("bi-robot", "primary", "Generate Answer (GPT-4o)")
+                })
+                {
+                    <div class="text-center">
+                        <div class="rounded-circle border border-@(step.Item2) d-inline-flex
+                            align-items-center justify-content-center mb-1"
+                             style="width:48px;height:48px">
+                            <i class="bi @(step.Item1) text-@(step.Item2)"></i>
+                        </div>
+                        <div class="small text-muted">@step.Item3</div>
+                    </div>
+                    if (step.Item3 != "Generate Answer (GPT-4o)")
+                    {
+                        <i class="bi bi-arrow-right text-secondary"></i>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>

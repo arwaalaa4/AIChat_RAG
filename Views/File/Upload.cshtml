@@ -1,0 +1,244 @@
+@using AIChat.ViewModels.File
+@model FileUploadViewModel
+@{
+    ViewData["Title"] = "Upload File";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-7">
+        <div class="d-flex align-items-center mb-4 gap-3">
+            <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <h2 class="mb-0"><i class="bi bi-upload text-primary"></i> Upload & Index File</h2>
+        </div>
+
+        <form asp-action="Upload" method="post" enctype="multipart/form-data" id="uploadForm">
+            @Html.AntiForgeryToken()
+
+            <div asp-validation-summary="All" class="alert alert-danger d-none" id="validationSummary"></div>
+
+            <!-- File picker -->
+            <div class="card bg-dark border-secondary mb-4">
+                <div class="card-header border-secondary">
+                    <h6 class="mb-0"><i class="bi bi-file-earmark-arrow-up text-primary"></i> Select File</h6>
+                </div>
+                <div class="card-body">
+                    <div class="upload-zone border border-secondary border-2 rounded p-5 text-center mb-3"
+                         id="uploadZone" style="border-style:dashed!important;cursor:pointer">
+                        <i class="bi bi-cloud-upload display-4 text-muted" id="uploadIcon"></i>
+                        <p class="text-muted mt-2 mb-1" id="uploadHint">
+                            Drag & drop or click to select a file
+                        </p>
+                        <small class="text-muted">PDF, TXT, DOCX — max 50MB</small>
+                        <div id="selectedFileInfo" class="mt-3 d-none">
+                            <span class="badge bg-primary fs-6" id="selectedFileName"></span>
+                        </div>
+                    </div>
+                    <input asp-for="File" type="file" class="d-none" id="fileInput"
+                           accept=".pdf,.txt,.docx" />
+                    <span asp-validation-for="File" class="text-danger small"></span>
+                </div>
+            </div>
+
+            <!-- Chunking Strategy -->
+            <div class="card bg-dark border-secondary mb-4">
+                <div class="card-header border-secondary">
+                    <h6 class="mb-0">
+                        <i class="bi bi-scissors text-warning"></i> Chunking Configuration
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 mb-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Strategy</label>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <input type="radio" class="btn-check" name="ChunkingStrategy"
+                                           id="stratFixed" value="FixedSize"
+                                           @(Model.ChunkingStrategy == "FixedSize" ? "checked" : "") />
+                                    <label class="btn btn-outline-info w-100 strategy-btn" for="stratFixed">
+                                        <i class="bi bi-grid-3x2-gap"></i><br/>
+                                        <strong>Fixed Size</strong>
+                                        <small class="d-block text-muted">Equal-sized chunks, fast</small>
+                                    </label>
+                                </div>
+                                <div class="col-6">
+                                    <input type="radio" class="btn-check" name="ChunkingStrategy"
+                                           id="stratOverlap" value="Overlapping"
+                                           @(Model.ChunkingStrategy == "Overlapping" ? "checked" : "") />
+                                    <label class="btn btn-outline-warning w-100 strategy-btn" for="stratOverlap">
+                                        <i class="bi bi-layers"></i><br/>
+                                        <strong>Overlapping</strong>
+                                        <small class="d-block text-muted">Sliding window, best for Q&A</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Strategy explanation -->
+                    <div id="strategyInfo" class="alert alert-info border-0 small mb-3">
+                        <strong>Fixed Size:</strong> Splits text into equal-size chunks with no overlap.
+                        Best for uniform documents, fast processing. May lose context at boundaries.
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="ChunkSize" class="form-label">
+                                Chunk Size
+                                <span class="text-muted small" id="chunkSizeDisplay">
+                                    (@Model.ChunkSize chars)
+                                </span>
+                            </label>
+                            <input asp-for="ChunkSize" type="range" class="form-range"
+                                   min="200" max="3000" step="100" id="chunkSizeSlider"
+                                   value="@Model.ChunkSize" />
+                            <span asp-validation-for="ChunkSize" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6" id="overlapGroup">
+                            <label asp-for="ChunkOverlap" class="form-label">
+                                Overlap Size
+                                <span class="text-muted small" id="overlapDisplay">
+                                    (@Model.ChunkOverlap chars)
+                                </span>
+                            </label>
+                            <input asp-for="ChunkOverlap" type="range" class="form-range"
+                                   min="0" max="500" step="25" id="overlapSlider"
+                                   value="@Model.ChunkOverlap" />
+                            <span asp-validation-for="ChunkOverlap" class="text-danger small"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit button + progress -->
+            <div id="progressSection" class="d-none mb-3">
+                <div class="card bg-dark border-info">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center gap-3 mb-2">
+                            <div class="spinner-border spinner-border-sm text-info"></div>
+                            <span id="progressText" class="text-info">Extracting text...</span>
+                        </div>
+                        <div class="progress" style="height:6px">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
+                                 id="progressBar" style="width:0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-lg flex-fill" id="submitBtn">
+                    <i class="bi bi-cpu"></i> Upload & Index
+                </button>
+                <a asp-action="Index" class="btn btn-outline-secondary btn-lg">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+// ── File Drop Zone ──────────────────────────────────────────────────────────
+const zone = document.getElementById('uploadZone');
+const input = document.getElementById('fileInput');
+const icon  = document.getElementById('uploadIcon');
+const hint  = document.getElementById('uploadHint');
+const info  = document.getElementById('selectedFileInfo');
+const fname = document.getElementById('selectedFileName');
+
+zone.addEventListener('click', () => input.click());
+
+zone.addEventListener('dragover', e => {
+    e.preventDefault();
+    zone.classList.add('border-primary');
+});
+zone.addEventListener('dragleave', () => zone.classList.remove('border-primary'));
+zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('border-primary');
+    if (e.dataTransfer.files[0]) {
+        input.files = e.dataTransfer.files;
+        updateFileDisplay(e.dataTransfer.files[0]);
+    }
+});
+
+input.addEventListener('change', () => {
+    if (input.files[0]) updateFileDisplay(input.files[0]);
+});
+
+function updateFileDisplay(file) {
+    icon.className = 'bi bi-file-earmark-check display-4 text-success';
+    hint.textContent = 'File selected:';
+    info.classList.remove('d-none');
+    fname.textContent = `${file.name} (${(file.size/1024).toFixed(1)} KB)`;
+}
+
+// ── Range Sliders ───────────────────────────────────────────────────────────
+document.getElementById('chunkSizeSlider').addEventListener('input', function() {
+    document.getElementById('chunkSizeDisplay').textContent = `(${this.value} chars)`;
+    document.getElementById('ChunkSize').value = this.value;
+});
+document.getElementById('overlapSlider').addEventListener('input', function() {
+    document.getElementById('overlapDisplay').textContent = `(${this.value} chars)`;
+    document.getElementById('ChunkOverlap').value = this.value;
+});
+
+// ── Strategy Radio ──────────────────────────────────────────────────────────
+const stratInfo = document.getElementById('strategyInfo');
+const overlapGroup = document.getElementById('overlapGroup');
+const strategies = {
+    FixedSize: {
+        msg: '<strong>Fixed Size:</strong> Splits text into equal-size chunks. Best for uniform documents, fast processing. May lose context at boundaries.',
+        color: 'info', showOverlap: false
+    },
+    Overlapping: {
+        msg: '<strong>Overlapping:</strong> Sliding window with overlap preserves context at boundaries. Best for Q&A, legal, technical docs. Higher storage cost.',
+        color: 'warning', showOverlap: true
+    }
+};
+
+document.querySelectorAll('input[name="ChunkingStrategy"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        const s = strategies[this.value];
+        stratInfo.className = `alert alert-${s.color} border-0 small mb-3`;
+        stratInfo.innerHTML = s.msg;
+        overlapGroup.style.opacity = s.showOverlap ? '1' : '0.4';
+        overlapGroup.querySelector('input').disabled = !s.showOverlap;
+    });
+});
+
+// ── Progress simulation during upload ──────────────────────────────────────
+document.getElementById('uploadForm').addEventListener('submit', function(e) {
+    if (!document.getElementById('fileInput').files[0]) return;
+
+    const steps = [
+        { pct: 15, text: '📄 Extracting text from file...' },
+        { pct: 35, text: '✂️ Chunking document...' },
+        { pct: 55, text: '🔮 Generating embeddings (OpenAI)...' },
+        { pct: 80, text: '💾 Storing vectors in MongoDB...' },
+        { pct: 95, text: '✅ Finalizing index...' }
+    ];
+
+    document.getElementById('progressSection').classList.remove('d-none');
+    document.getElementById('submitBtn').disabled = true;
+    document.getElementById('submitBtn').innerHTML =
+        '<span class="spinner-border spinner-border-sm"></span> Processing...';
+
+    let i = 0;
+    const bar = document.getElementById('progressBar');
+    const txt = document.getElementById('progressText');
+
+    const interval = setInterval(() => {
+        if (i < steps.length) {
+            bar.style.width = steps[i].pct + '%';
+            txt.textContent = steps[i].text;
+            i++;
+        } else {
+            clearInterval(interval);
+        }
+    }, 1800);
+});
+</script>
+}

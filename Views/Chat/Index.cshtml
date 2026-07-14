@@ -1,0 +1,332 @@
+﻿@using AIChat.ViewModels.Chat
+@model ChatViewModel
+@{
+    ViewData["Title"] = "Chat";
+}
+
+<div class="row g-4" style="height: calc(100vh - 130px);">
+
+    <!-- ── Sidebar: File Selection ── -->
+    <div class="col-md-3 d-flex flex-column">
+        <h5 class="mb-3">
+            <i class="bi bi-folder2 text-primary"></i> Files
+        </h5>
+
+        @if (!Model.AvailableFiles.Any())
+        {
+            <div class="alert alert-warning border-0 small">
+                <i class="bi bi-exclamation-triangle"></i>
+                No indexed files yet.
+                <a asp-controller="File" asp-action="Upload">Upload one?</a>
+            </div>
+        }
+        else
+        {
+            <div class="card bg-dark border-secondary flex-fill overflow-auto">
+                <div class="card-header border-secondary d-flex justify-content-between align-items-center">
+                    <small class="text-muted">Select files to search</small>
+                    <div>
+                        <button class="btn btn-link btn-sm p-0 text-info me-2" onclick="selectAll(true)">All</button>
+                        <button class="btn btn-link btn-sm p-0 text-muted" onclick="selectAll(false)">None</button>
+                    </div>
+                </div>
+                <div class="card-body p-2" id="fileList">
+                    @foreach (var f in Model.AvailableFiles)
+                    {
+                        <div class="file-item d-flex align-items-start gap-2 p-2 rounded mb-1"
+                             style="cursor:pointer" onclick="toggleFile(this)" data-file-id="@f.Id">
+                            <input type="checkbox" class="form-check-input mt-1 file-checkbox"
+                                   value="@f.Id" checked />
+                            <div class="flex-fill overflow-hidden">
+                                <div class="text-truncate small fw-semibold" title="@f.FileName">
+                                    @f.FileName
+                                </div>
+                                <div class="text-muted" style="font-size:.7rem">
+                                    <span class="badge bg-primary badge-sm">@f.ChunkCount chunks</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Session info -->
+        <div class="card bg-dark border-secondary mt-3">
+            <div class="card-body p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <small class="text-muted">Session</small>
+                    <button class="btn btn-outline-danger btn-sm" onclick="clearChat()">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+                <div class="font-monospace text-muted" style="font-size:.65rem">
+                    @Model.SessionId[..8]…
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Main Chat Area ── -->
+    <div class="col-md-9 d-flex flex-column">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">
+                <i class="bi bi-chat-dots text-info"></i> Ask Your Documents
+            </h5>
+            <div id="statusIndicator" class="small text-muted">
+                <i class="bi bi-circle-fill text-success" style="font-size:.6rem"></i> Ready
+            </div>
+        </div>
+
+        <!-- Messages container -->
+        <div id="chatMessages" class="flex-fill overflow-auto mb-3 pe-1">
+
+            <!-- Welcome message -->
+            <div class="message assistant-message" id="welcomeMsg">
+                <div class="d-flex gap-3 mb-3">
+                    <div class="avatar bg-primary rounded-circle d-flex align-items-center
+                                justify-content-center flex-shrink-0"
+                         style="width:36px;height:36px">
+                        <i class="bi bi-robot text-white small"></i>
+                    </div>
+                    <div class="message-bubble bg-dark border border-secondary rounded p-3 flex-fill">
+                        <div class="small fw-semibold text-primary mb-1">AI Assistant</div>
+                        <div class="message-content">
+                            👋 Hello! I'm ready to answer questions about your uploaded files.
+                            Select which files to search in the sidebar, then type your question below.
+                            I'll find the most relevant passages and give you a grounded answer.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input area -->
+        <div class="card bg-dark border-secondary">
+            <div class="card-body p-3">
+                <div class="d-flex gap-2">
+                    <textarea id="questionInput"
+                              class="form-control bg-dark border-secondary text-white"
+                              rows="2"
+                              placeholder="Ask anything about your files… (Enter to send, Shift+Enter for new line)"
+                              style="resize:none;"></textarea>
+                    <button id="sendBtn" class="btn btn-primary align-self-end px-3"
+                            onclick="sendMessage()">
+                        <i class="bi bi-send-fill"></i>
+                    </button>
+                </div>
+                <div class="d-flex justify-content-between mt-2">
+                    <small class="text-muted">
+                        <i class="bi bi-shield-check text-success"></i>
+                        Answers grounded in your documents only
+                    </small>
+                    <small class="text-muted" id="charCount">0 chars</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Source details modal -->
+<div class="modal fade" id="sourcesModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title">
+                    <i class="bi bi-journal-text text-info"></i> Source References
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="sourcesModalBody"></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+const SESSION_ID = '@Model.SessionId';
+const messages   = document.getElementById('chatMessages');
+const input      = document.getElementById('questionInput');
+const sendBtn    = document.getElementById('sendBtn');
+const statusEl   = document.getElementById('statusIndicator');
+
+// ── File selection helpers ────────────────────────────────────────────────
+function toggleFile(item) {
+    const cb = item.querySelector('.file-checkbox');
+    if (!cb) return;
+    cb.checked = !cb.checked;
+    item.classList.toggle('border', cb.checked);
+    item.classList.toggle('border-primary', cb.checked);
+}
+
+function selectAll(state) {
+    document.querySelectorAll('.file-checkbox').forEach(cb => {
+        cb.checked = state;
+        const item = cb.closest('.file-item');
+        item.classList.toggle('border', state);
+        item.classList.toggle('border-primary', state);
+    });
+}
+
+function getSelectedFileIds() {
+    return Array.from(
+        document.querySelectorAll('.file-checkbox:checked')
+    ).map(cb => cb.value);
+}
+
+// ── Chat ──────────────────────────────────────────────────────────────────
+input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+input.addEventListener('input', () => {
+    document.getElementById('charCount').textContent = `${input.value.length} chars`;
+});
+
+async function sendMessage() {
+    const question = input.value.trim();
+    if (!question) return;
+
+    const fileIds = getSelectedFileIds();
+
+    // Append user bubble
+    appendMessage('user', question, []);
+    input.value = '';
+    document.getElementById('charCount').textContent = '0 chars';
+    setLoading(true);
+
+    try {
+        const res = await fetch('/Chat/Ask', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question, sessionId: SESSION_ID, fileIds })
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            appendMessage('assistant', `❌ Error: ${err.error || 'Request failed'}`, []);
+            return;
+        }
+
+        const data = await res.json();
+        appendMessage('assistant', data.content, data.sources || []);
+    } catch (err) {
+        appendMessage('assistant', '❌ Network error. Please check your connection.', []);
+        console.error(err);
+    } finally {
+        setLoading(false);
+    }
+}
+
+function appendMessage(role, content, sources) {
+    const isUser = role === 'user';
+    const now    = new Date().toLocaleTimeString();
+
+    // Hide welcome message on first real exchange
+    const welcome = document.getElementById('welcomeMsg');
+    if (welcome) welcome.style.display = 'none';
+
+    const div = document.createElement('div');
+    div.className = `message ${role}-message`;
+
+    const renderedContent = isUser
+        ? escapeHtml(content)
+        : (typeof marked !== 'undefined' ? marked.parse(content) : escapeHtml(content));
+
+    const sourcesHtml = (!isUser && sources && sources.length > 0)
+        ? `<div class="mt-2">
+             <button class="btn btn-outline-secondary btn-sm"
+                     onclick='showSources(${JSON.stringify(sources)})'>
+               <i class="bi bi-journal-text"></i>
+               ${sources.length} source(s)
+             </button>
+           </div>`
+        : '';
+
+    div.innerHTML = `
+      <div class="d-flex gap-3 mb-3 ${isUser ? 'flex-row-reverse' : ''}">
+        <div class="avatar ${isUser ? 'bg-secondary' : 'bg-primary'} rounded-circle
+                    d-flex align-items-center justify-content-center flex-shrink-0"
+             style="width:36px;height:36px">
+          <i class="bi ${isUser ? 'bi-person-fill' : 'bi-robot'} text-white small"></i>
+        </div>
+        <div class="message-bubble ${isUser ? 'bg-secondary bg-opacity-25' : 'bg-dark border border-secondary'}
+                    rounded p-3 flex-fill">
+          <div class="d-flex justify-content-between mb-1">
+            <span class="small fw-semibold ${isUser ? 'text-secondary' : 'text-primary'}">
+              ${isUser ? 'You' : 'AI Assistant'}
+            </span>
+            <span class="small text-muted">${now}</span>
+          </div>
+          <div class="message-content">${renderedContent}</div>
+          ${sourcesHtml}
+        </div>
+      </div>`;
+
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+}
+
+function showSources(sources) {
+    const body = document.getElementById('sourcesModalBody');
+    body.innerHTML = sources.map((s, i) => `
+      <div class="card bg-dark border-secondary mb-3">
+        <div class="card-header border-secondary d-flex justify-content-between">
+          <span><i class="bi bi-file-earmark-text text-info"></i> ${escapeHtml(s.fileName)}</span>
+          <span class="badge bg-primary">Score: ${(s.score * 100).toFixed(1)}%</span>
+        </div>
+        <div class="card-body">
+          <p class="mb-0 font-monospace small text-muted">${escapeHtml(s.preview)}</p>
+        </div>
+      </div>`).join('');
+
+    new bootstrap.Modal(document.getElementById('sourcesModal')).show();
+}
+
+function setLoading(state) {
+    sendBtn.disabled  = state;
+    input.disabled    = state;
+    statusEl.innerHTML = state
+        ? '<span class="spinner-border spinner-border-sm text-warning"></span> Thinking…'
+        : '<i class="bi bi-circle-fill text-success" style="font-size:.6rem"></i> Ready';
+
+    if (state) {
+        const typing = document.createElement('div');
+        typing.id = 'typingIndicator';
+        typing.className = 'message assistant-message';
+        typing.innerHTML = `
+          <div class="d-flex gap-3 mb-3">
+            <div class="avatar bg-primary rounded-circle d-flex align-items-center
+                        justify-content-center flex-shrink-0" style="width:36px;height:36px">
+              <i class="bi bi-robot text-white small"></i>
+            </div>
+            <div class="message-bubble bg-dark border border-secondary rounded p-3">
+              <div class="typing-dots">
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+          </div>`;
+        messages.appendChild(typing);
+        messages.scrollTop = messages.scrollHeight;
+    } else {
+        document.getElementById('typingIndicator')?.remove();
+    }
+}
+
+function clearChat() {
+    if (!confirm('Clear chat history?')) return;
+    document.querySelectorAll('.message').forEach(m => {
+        if (m.id !== 'welcomeMsg') m.remove();
+    });
+    const welcome = document.getElementById('welcomeMsg');
+    if (welcome) welcome.style.display = '';
+}
+
+function escapeHtml(text) {
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+</script>
+}

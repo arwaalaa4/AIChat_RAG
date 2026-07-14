@@ -1,0 +1,79 @@
+@using AIChat.ViewModels.File
+@model FileUploadViewModel
+@{
+    ViewData["Title"] = "Re-Index File";
+}
+
+<div class="d-flex align-items-center mb-4 gap-3">
+    <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <h2 class="mb-0">
+        <i class="bi bi-arrow-repeat text-warning"></i> Re-Index: @ViewBag.FileName
+    </h2>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-7">
+        <div class="alert alert-warning border-0">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            Re-indexing will delete all existing chunks and rebuild the vector index
+            with the new settings.
+        </div>
+
+        <form asp-action="ReIndex" asp-route-id="@ViewBag.FileId" method="post">
+            @Html.AntiForgeryToken()
+
+            <div class="card bg-dark border-secondary mb-4">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Strategy</label>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <input type="radio" class="btn-check" name="ChunkingStrategy"
+                                       id="sFixed" value="FixedSize"
+                                       @(Model.ChunkingStrategy == "FixedSize" ? "checked" : "") />
+                                <label class="btn btn-outline-info w-100" for="sFixed">
+                                    <i class="bi bi-grid-3x2-gap"></i> Fixed Size
+                                </label>
+                            </div>
+                            <div class="col-6">
+                                <input type="radio" class="btn-check" name="ChunkingStrategy"
+                                       id="sOverlap" value="Overlapping"
+                                       @(Model.ChunkingStrategy == "Overlapping" ? "checked" : "") />
+                                <label class="btn btn-outline-warning w-100" for="sOverlap">
+                                    <i class="bi bi-layers"></i> Overlapping
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="ChunkSize" class="form-label">
+                            Chunk Size: <span id="cs">@Model.ChunkSize</span> chars
+                        </label>
+                        <input asp-for="ChunkSize" type="range" class="form-range"
+                               min="200" max="3000" step="100"
+                               oninput="document.getElementById('cs').textContent=this.value" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="ChunkOverlap" class="form-label">
+                            Overlap: <span id="co">@Model.ChunkOverlap</span> chars
+                        </label>
+                        <input asp-for="ChunkOverlap" type="range" class="form-range"
+                               min="0" max="500" step="25"
+                               oninput="document.getElementById('co').textContent=this.value" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-warning btn-lg flex-fill">
+                    <i class="bi bi-arrow-repeat"></i> Re-Index Now
+                </button>
+                <a asp-action="Index" class="btn btn-outline-secondary btn-lg">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>

@@ -1,0 +1,90 @@
+﻿@model FileDocument
+@{
+    ViewData["Title"] = "File Details";
+}
+
+<div class="d-flex align-items-center mb-4 gap-3">
+    <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back
+    </a>
+    <h2 class="mb-0">
+        <i class="bi bi-file-earmark-text text-primary"></i> @Model.FileName
+    </h2>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card bg-dark border-secondary h-100">
+            <div class="card-header border-secondary">
+                <h6 class="mb-0"><i class="bi bi-info-circle text-info"></i> File Information</h6>
+            </div>
+            <div class="card-body">
+                <table class="table table-dark table-sm mb-0">
+                    <tr><td class="text-muted">File Name</td><td>@Model.FileName</td></tr>
+                    <tr><td class="text-muted">File Type</td><td>@Model.FileType.ToUpper().TrimStart('.')</td></tr>
+                    <tr><td class="text-muted">Size</td><td>@((Model.FileSizeBytes / 1024.0).ToString("F1")) KB</td></tr>
+                    <tr><td class="text-muted">Status</td>
+                        <td>
+                            <span class="badge bg-@(Model.Status == FileIndexingStatus.Indexed ? "success" : "warning")">
+                                @Model.Status
+                            </span>
+                        </td>
+                    </tr>
+                    <tr><td class="text-muted">Uploaded</td><td>@Model.UploadedAt.ToLocalTime().ToString("f")</td></tr>
+                    <tr><td class="text-muted">Indexed</td>
+                        <td>@(Model.IndexedAt.HasValue ? Model.IndexedAt.Value.ToLocalTime().ToString("f") : "—")</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card bg-dark border-secondary h-100">
+            <div class="card-header border-secondary">
+                <h6 class="mb-0"><i class="bi bi-scissors text-warning"></i> Chunking Configuration</h6>
+            </div>
+            <div class="card-body">
+                <table class="table table-dark table-sm mb-0">
+                    <tr>
+                        <td class="text-muted">Strategy</td>
+                        <td>
+                            <span class="badge @(Model.ChunkingStrategy == "FixedSize" ? "bg-info" : "bg-warning text-dark")">
+                                @Model.ChunkingStrategy
+                            </span>
+                        </td>
+                    </tr>
+                    <tr><td class="text-muted">Chunk Size</td><td>@Model.ChunkSize characters</td></tr>
+                    <tr><td class="text-muted">Overlap</td><td>@Model.ChunkOverlap characters</td></tr>
+                    <tr>
+                        <td class="text-muted">Total Chunks</td>
+                        <td><span class="badge bg-primary">@Model.ChunkCount</span></td>
+                    </tr>
+                    <tr><td class="text-muted">Content Hash</td>
+                        <td class="font-monospace small text-muted">@Model.ContentHash[..16]…</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="d-flex gap-2">
+            <a asp-action="ReIndex" asp-route-id="@Model.Id"
+               class="btn btn-warning">
+                <i class="bi bi-arrow-repeat"></i> Re-Index with Different Strategy
+            </a>
+            <a asp-controller="Chat" asp-action="Index"
+               class="btn btn-primary">
+                <i class="bi bi-chat-dots"></i> Chat with This File
+            </a>
+            <form asp-action="Delete" asp-route-id="@Model.Id" method="post"
+                  onsubmit="return confirm('Delete this file and all chunks?')">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-trash"></i> Delete
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
